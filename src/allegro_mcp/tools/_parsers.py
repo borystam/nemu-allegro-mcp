@@ -41,14 +41,10 @@ def parse_offer_summary(raw: dict[str, Any]) -> OfferSummary:
         seller_id=_str_or_none(seller.get("id")),
         seller_login=_str_or_none(seller.get("login")),
         condition=_str_or_none(
-            (raw.get("parameters") or [{}])[0].get("values", [None])[0]
-            if raw.get("parameters")
-            else raw.get("condition")
+            _pick_parameter(raw.get("parameters"), "condition") or raw.get("condition")
         ),
         quantity_available=_int_or_none(raw.get("stock", {}).get("available")),
-        is_business=_bool_or_none(
-            seller.get("company", None) is not None or seller.get("kind") == "BUSINESS"
-        ),
+        is_business=_infer_is_business(seller),
         free_delivery=_bool_or_none(delivery.get("free")),
         smart=_bool_or_none(delivery.get("smart")),
         image_url=_first_image(raw.get("images")),
@@ -113,9 +109,7 @@ def parse_offer(raw: dict[str, Any]) -> Offer:
         ),
         seller_id=_str_or_none(seller.get("id")),
         seller_login=_str_or_none(seller.get("login")),
-        is_business=_bool_or_none(
-            seller.get("company") is not None or seller.get("kind") == "BUSINESS"
-        ),
+        is_business=_infer_is_business(seller),
         condition=_str_or_none(_pick_parameter(raw.get("parameters"), "condition")),
         quantity_available=_int_or_none((raw.get("stock") or {}).get("available")),
         stock_unit=_str_or_none((raw.get("stock") or {}).get("unit")),
@@ -202,9 +196,7 @@ def parse_seller(raw: dict[str, Any]) -> Seller:
     return Seller(
         seller_id=str(raw.get("id") or ""),
         login=str(raw.get("login") or ""),
-        is_business=_bool_or_none(
-            (raw.get("company") is not None) or raw.get("kind") == "BUSINESS"
-        ),
+        is_business=_infer_is_business(raw),
         company_name=_str_or_none((raw.get("company") or {}).get("name")),
         location=_str_or_none((raw.get("address") or {}).get("city")),
         member_since=None,
@@ -300,3 +292,28 @@ def _bool_or_none(value: Any) -> bool | None:
     if value is None:
         return None
     return bool(value)
+
+
+def _infer_is_business(seller: Any) -> bool | None:
+    """Return True/False if the data is conclusive, otherwise None.
+
+    Allegro flags business sellers either by a ``company`` block being
+    present, or by ``kind == "BUSINESS"``. If neither field is present at
+    all we report ``None`` ("unknown") rather than falsely reporting the
+    seller as private.
+    """
+    if not isinstance(seller, dict):
+        return None
+    company = seller.get("company")
+    kind = seller.get("kind")
+    if company is not None and isinstance(company, dict) and company.get("name"):
+        return True
+    if isinstance(kind, str):
+        kind_upper = kind.upper()
+        if kind_upper == "BUSINESS":
+            return True
+        if kind_upper in {"PRIVATE", "PERSON", "REGULAR"}:
+            return False
+    if company is None and kind is None:
+        return None
+    return False

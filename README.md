@@ -83,7 +83,15 @@ Token and history paths default to `~/.allegro-mcp/tokens.db` and
   application and running the bootstrap script.
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — systemd, Docker, reverse
   proxy, and secret-injection patterns.
+- [`docs/LIVE_TESTING.md`](docs/LIVE_TESTING.md) — a punch list for
+  running the server against the live sandbox the first time,
+  including a per-tool confidence rating.
 
 ## Licence
 
-MIT. See [`LICENSE`](LICENSE).
+[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/),
+see [`LICENSE`](LICENSE). You may use, fork, modify, and redistribute the
+software for any non-commercial purpose, including personal research and
+hobby projects, provided that you retain the copyright notice. Commercial
+or corporate use is not permitted under this licence; contact the
+copyright holders if you need other terms.

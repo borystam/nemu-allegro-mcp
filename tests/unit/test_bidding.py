@@ -18,9 +18,9 @@ async def test_place_bid_refuses_without_confirm(tool_context) -> None:
 
 
 @pytest.mark.asyncio
-async def test_place_bid_with_confirm_posts(allegro_client, tool_context, httpx_mock) -> None:
+async def test_place_bid_with_confirm_puts(allegro_client, tool_context, httpx_mock) -> None:
     httpx_mock.add_response(
-        method="POST",
+        method="PUT",
         url="https://api.allegro.pl.allegrosandbox.pl/bidding/offers/123/bid",
         json={"offer": {"id": "123", "name": "n"}, "status": "winning"},
     )

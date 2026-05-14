@@ -86,6 +86,8 @@ def _attach_internal_routes(mcp: FastMCP, context: ToolContext) -> None:
 
     @mcp.custom_route("/internal/poll-watched", methods=["POST"])
     async def poll_watched(request: Request) -> Response:
+        import hmac
+
         from starlette.responses import JSONResponse
 
         expected = context.settings.internal_secret
@@ -95,7 +97,7 @@ def _attach_internal_routes(mcp: FastMCP, context: ToolContext) -> None:
                 status_code=503,
             )
         provided = request.headers.get("X-Internal-Secret", "")
-        if provided != expected.get_secret_value():
+        if not hmac.compare_digest(provided, expected.get_secret_value()):
             return JSONResponse({"error": "unauthorised"}, status_code=401)
         recorded = await _snapshot_watched(context)
         return JSONResponse({"recorded": recorded})

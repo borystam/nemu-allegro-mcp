@@ -265,7 +265,8 @@ async def _flag_offer(client: AllegroClient, offer: Offer) -> SuspicionFlag:
             if not values:
                 continue
             for value in values:
-                if isinstance(value, str) and value.lower() in name_lower:
+                rendered = _render_param_value(value)
+                if rendered and len(rendered) >= 2 and rendered.lower() in name_lower:
                     break
             else:
                 continue
@@ -295,4 +296,25 @@ async def _seller_rating(client: AllegroClient, seller_id: str | None) -> float 
     seller = parse_seller(payload)
     if seller.ratings and seller.ratings.average_score is not None:
         return float(seller.ratings.average_score)
+    return None
+
+
+def _render_param_value(value: object) -> str | None:
+    """Return a human-readable string from a parameter value.
+
+    Allegro returns parameter values either as plain strings or as nested
+    dicts shaped like ``{"id": ..., "value": ...}``; both shapes need to
+    feed the title-vs-spec overlap check without false negatives.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        for key in ("value", "name", "valueName"):
+            inner = value.get(key)
+            if isinstance(inner, str) and inner:
+                return inner
+    if isinstance(value, (int, float)):
+        return str(value)
     return None

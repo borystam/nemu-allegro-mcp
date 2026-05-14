@@ -167,7 +167,7 @@ class AllegroClient:
             )
             if response.status_code == 401 and not refresh_attempted:
                 refresh_attempted = True
-                await self._token_manager.force_refresh()
+                await self._token_manager.force_refresh(stale_token=access_token)
                 continue
             decision = self._retry_decision(response, attempt)
             if not decision.retry:
