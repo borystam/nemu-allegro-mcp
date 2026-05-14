@@ -86,4 +86,9 @@ Token and history paths default to `~/.allegro-mcp/tokens.db` and
 
 ## Licence
 
-MIT. See [`LICENSE`](LICENSE).
+[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/),
+see [`LICENSE`](LICENSE). You may use, fork, modify, and redistribute the
+software for any non-commercial purpose, including personal research and
+hobby projects, provided that you retain the copyright notice. Commercial
+or corporate use is not permitted under this licence; contact the
+copyright holders if you need other terms.
