@@ -54,14 +54,23 @@ class TokenManager:
                 self._cached = await self._refresh(self._cached.refresh_token)
             return self._cached.access_token
 
-    async def force_refresh(self) -> str:
-        """Force a refresh regardless of expiry. Used after a 401."""
+    async def force_refresh(self, *, stale_token: str | None = None) -> str:
+        """Force a refresh regardless of expiry. Used after a 401.
+
+        If ``stale_token`` is provided and the cached access token already
+        differs from it, another caller has refreshed in the meantime and we
+        return the new token without exchanging another. This avoids a flurry
+        of redundant refreshes when several in-flight requests all see a 401
+        because the server invalidated the previous bearer.
+        """
         async with self._lock:
             if self._cached is None:
                 loaded = await self._store.load()
                 if loaded is None:
                     raise RefreshError("No tokens stored; run scripts/bootstrap_auth.py first.")
                 self._cached = loaded
+            if stale_token is not None and self._cached.access_token != stale_token:
+                return self._cached.access_token
             self._cached = await self._refresh(self._cached.refresh_token)
             return self._cached.access_token
 

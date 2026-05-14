@@ -66,8 +66,8 @@ def register(mcp: FastMCP, context: ToolContext) -> None:
             raise ConfirmationRequired(
                 "place_bid requires confirm=True; auction bids are legally binding on win"
             )
-        payload = await context.client.post(
-            "/bidding/offers/{offer_id}/bid".replace("{offer_id}", offer_id),
+        payload = await context.client.put(
+            f"/bidding/offers/{offer_id}/bid",
             json={"maxAmount": {"amount": str(amount), "currency": "PLN"}},
         )
         return _bid_from(payload)

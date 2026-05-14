@@ -83,6 +83,9 @@ Token and history paths default to `~/.allegro-mcp/tokens.db` and
   application and running the bootstrap script.
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — systemd, Docker, reverse
   proxy, and secret-injection patterns.
+- [`docs/LIVE_TESTING.md`](docs/LIVE_TESTING.md) — a punch list for
+  running the server against the live sandbox the first time,
+  including a per-tool confidence rating.
 
 ## Licence
 
