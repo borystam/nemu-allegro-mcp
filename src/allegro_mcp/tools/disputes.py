@@ -53,9 +53,7 @@ def register(mcp: FastMCP, context: ToolContext) -> None:
         """
         payload = await context.client.get(f"/post-purchase-issues/{dispute_id}")
         dispute = _dispute_from(payload)
-        messages_payload = await context.client.get(
-            f"/post-purchase-issues/{dispute_id}/messages"
-        )
+        messages_payload = await context.client.get(f"/post-purchase-issues/{dispute_id}/messages")
         dispute.messages = [_message_from(raw) for raw in messages_payload.get("messages") or []]
         return dispute
 
