@@ -50,9 +50,6 @@ Endpoint or shape is plausibly correct but not personally verified:
 - `list_purchases` / `get_purchase` — `/order/checkout-forms`. Shape is
   fairly complex; the parser handles the common fields but rarer fields
   (delivery tracking numbers, refunds) are left in raw parameters.
-- `find_pickup_points` — `/order/pickup-points`. The query parameter
-  spelling (`postCode` vs `postalCode`) is one place I might be off.
-
 ### Lower confidence — please prioritise testing
 
 These are buyer-side endpoints whose exact contract I do not have
@@ -62,12 +59,13 @@ the actual response shapes:
 - `list_messages` / `send_message` — `/messaging/threads` and
   `/messaging/threads/{id}/messages`. Field names for the author and
   attachments may differ.
-- `list_bids` / `place_bid` — `/bidding/bids` and
-  `PUT /bidding/offers/{id}/bid` with `{"maxAmount": {...}}`.
+- `list_bids` / `place_bid` — `GET /users/me/bids` and
+  `PUT /users/me/bids` with `{"offer": {"id": ...}, "maxAmount": {...}}`.
 - `submit_rating` / `list_my_ratings` — `/sale/user-ratings`. Body shape
   for submission is a guess.
-- `list_disputes` / `get_dispute` / `open_dispute` — `/sale/disputes`.
-  The dispute creation body is a guess.
+- `list_disputes` / `get_dispute` — `/post-purchase-issues`. The parser
+  tries `postPurchaseIssues`, `issues`, and `disputes` as the top-level
+  collection key.
 
 ## Recommended testing order
 
@@ -93,9 +91,10 @@ the actual response shapes:
 6. **Bidding.** Confirm `list_bids` first. **Do not** call `place_bid`
    on a real auction unless you have an actual intent to bid; bids are
    legally binding.
-7. **Disputes.** `list_disputes` and `get_dispute` are safe;
-   `open_dispute` should only fire on an order you genuinely want to
-   escalate.
+7. **Disputes.** `list_disputes` and `get_dispute` are safe reads.
+   Opening a new dispute is no longer exposed via the public API —
+   buyers initiate from the Allegro web UI; the API can only read and
+   respond to issues that already exist.
 
 ## What to report back
 

@@ -36,7 +36,7 @@ def register(mcp: FastMCP, context: ToolContext) -> None:
         including their outbid/winning status. Do not place new bids from
         this tool; use `place_bid` for that.
         """
-        payload = await context.client.get("/bidding/bids")
+        payload = await context.client.get("/users/me/bids")
         return [_bid_from(raw) for raw in payload.get("bids") or []]
 
     @mcp.tool
@@ -67,8 +67,11 @@ def register(mcp: FastMCP, context: ToolContext) -> None:
                 "place_bid requires confirm=True; auction bids are legally binding on win"
             )
         payload = await context.client.put(
-            f"/bidding/offers/{offer_id}/bid",
-            json={"maxAmount": {"amount": str(amount), "currency": "PLN"}},
+            "/users/me/bids",
+            json={
+                "offer": {"id": offer_id},
+                "maxAmount": {"amount": str(amount), "currency": "PLN"},
+            },
         )
         return _bid_from(payload)
 

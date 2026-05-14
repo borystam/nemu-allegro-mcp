@@ -247,6 +247,39 @@ def test_no_code_references_dead_watchlist_endpoint() -> None:
         )
 
 
+def test_no_code_references_dead_buyer_endpoints() -> None:
+    """Allegro renamed/removed three buyer-side endpoint families.
+
+    - `/bidding/bids` and `/bidding/offers/{id}/bid` were superseded
+      by `/users/{userId}/bids` (GET to list, PUT to place).
+    - `/sale/disputes*` was renamed to `/post-purchase-issues*` and the
+      `POST` to create new disputes was withdrawn from the public API
+      (buyers open disputes from the Allegro web UI; the API only reads
+      and responds to existing issues).
+    - `/order/pickup-points` no longer exists in the public REST API;
+      no geolocation-based pickup-point lookup is documented today,
+      so `find_pickup_points` was removed.
+
+    This test fails loudly if any of those stale paths comes back so a
+    future rewrite triggers an explicit re-evaluation.
+    """
+    from pathlib import Path
+
+    forbidden = (
+        "/bidding/bids",
+        "/bidding/offers",
+        "/sale/disputes",
+        "/order/pickup-points",
+    )
+    for path in Path("src/allegro_mcp").rglob("*.py"):
+        text = path.read_text()
+        for needle in forbidden:
+            assert needle not in text, (
+                f"{path} references {needle}; that endpoint no longer exists "
+                f"in Allegro's public REST API. See test docstring."
+            )
+
+
 # ----------------------------------------------------------------------
 # Module loader
 # ----------------------------------------------------------------------
@@ -370,15 +403,17 @@ async def test_place_bid_amount_must_be_positive(tool_context) -> None:
 
 
 @pytest.mark.asyncio
-async def test_open_dispute_requires_minimum_description(tool_context) -> None:
+async def test_open_dispute_tool_not_registered(tool_context) -> None:
+    """`open_dispute` was removed: Allegro's public API no longer exposes
+    a POST to create a new post-purchase issue (buyers initiate from the
+    web UI). This test pins the removal so a future reintroduction needs
+    an explicit decision."""
     from allegro_mcp.tools import disputes
 
     mcp = FastMCP(name="t")
     disputes.register(mcp, tool_context)
-    tool = await mcp.get_tool("open_dispute")
-    schema = tool.parameters
-    desc = schema["properties"]["description"]
-    assert desc.get("minLength") == 20
+    tools = await mcp.list_tools()
+    assert "open_dispute" not in {t.name for t in tools}
 
 
 # ----------------------------------------------------------------------

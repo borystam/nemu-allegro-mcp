@@ -21,7 +21,7 @@ async def test_place_bid_refuses_without_confirm(tool_context) -> None:
 async def test_place_bid_with_confirm_puts(allegro_client, tool_context, httpx_mock) -> None:
     httpx_mock.add_response(
         method="PUT",
-        url="https://api.allegro.pl.allegrosandbox.pl/bidding/offers/123/bid",
+        url="https://api.allegro.pl.allegrosandbox.pl/users/me/bids",
         json={"offer": {"id": "123", "name": "n"}, "status": "winning"},
     )
     mcp = FastMCP(name="t")

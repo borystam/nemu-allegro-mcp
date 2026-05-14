@@ -14,7 +14,7 @@ from allegro_mcp.tools import bidding, deep_search, intel
 async def test_list_bids(allegro_client, tool_context, httpx_mock) -> None:
     httpx_mock.add_response(
         method="GET",
-        url="https://api.allegro.pl.allegrosandbox.pl/bidding/bids",
+        url="https://api.allegro.pl.allegrosandbox.pl/users/me/bids",
         json={
             "bids": [
                 {

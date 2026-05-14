@@ -122,14 +122,15 @@ Leave 1–5 stars and optional text for a completed order.
 Ratings the authenticated buyer has previously submitted.
 
 ### list_disputes() → list[Dispute]
-All disputes the buyer has opened.
+All post-purchase issues the buyer has open or closed (Allegro's
+buyer-side dispute model, served from `/post-purchase-issues`).
 
 ### get_dispute(dispute_id) → Dispute
 Full record with messages.
 
-### open_dispute(order_id, reason, description) → Dispute
-Open a buyer-protection dispute. Use only after lighter contact (a
-message to the seller) has failed.
+Note: opening a new dispute is not exposed via the public REST API.
+Buyers initiate from the Allegro web UI; the API only reads and
+responds to existing issues.
 
 ## Account and handoff
 
@@ -140,5 +141,6 @@ The authenticated user's profile.
 Web URL plus app deep link to complete the purchase. Never calls any
 payment endpoint — Allegro does not expose one in the public API.
 
-### find_pickup_points(postal_code, radius_km, providers?) → list[PickupPoint]
-Nearby pickup points (lockers, kiosks) for delivery selection.
+Note: no `find_pickup_points` tool — Allegro's public REST API does
+not currently expose a geolocation-based pickup-point lookup, so the
+agent hands off pickup selection to the web/app flow.
