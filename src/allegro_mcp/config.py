@@ -25,7 +25,6 @@ _DEFAULT_MODULES = (
     "category",
     "seller",
     "purchases",
-    "watching",
     "messaging",
     "bidding",
     "ratings",
@@ -58,6 +57,7 @@ class Settings(BaseSettings):
     mcp_port: int = 8765
     mcp_bind: str = "127.0.0.1"
     mcp_modules: str = ",".join(_DEFAULT_MODULES)
+    mcp_bearer: SecretStr | None = None
 
     default_postal_code: str | None = None
     rate_limit_rps: Annotated[float, Field(gt=0)] = 60.0

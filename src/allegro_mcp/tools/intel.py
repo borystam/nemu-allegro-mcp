@@ -97,10 +97,10 @@ def register(mcp: FastMCP, context: ToolContext) -> None:
 
         Use this to detect dips, durable price drops, or recent inflation
         against the offer/product's own history. History is only populated
-        for items that have been watched and polled via the
-        `/internal/poll-watched` endpoint (or whichever scheduler the
-        operator has wired up). Do not assume coverage extends to offers
-        the user has never watched.
+        for offer IDs the operator has explicitly snapshotted via the
+        `/internal/snapshot-offers` endpoint (typically cron or a systemd
+        timer hitting it with the agent's shortlist). Do not assume
+        coverage extends to offers that have never been snapshotted.
         """
         now = datetime.now(UTC)
         since = now - timedelta(days=days)
@@ -116,7 +116,7 @@ def register(mcp: FastMCP, context: ToolContext) -> None:
         prices = [p.price.amount for p in points]
         notes: list[str] = []
         if not points:
-            notes.append("no history recorded; poll the offer via /internal/poll-watched")
+            notes.append("no history recorded; snapshot the offer via /internal/snapshot-offers")
         median = statistics.median(prices) if prices else None
         lowest = min(prices) if prices else None
         highest = max(prices) if prices else None

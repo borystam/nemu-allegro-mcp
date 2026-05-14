@@ -226,6 +226,27 @@ def test_internal_secret_uses_hmac_compare_digest() -> None:
     assert "provided != expected.get_secret_value()" not in src
 
 
+def test_no_code_references_dead_watchlist_endpoint() -> None:
+    """Allegro's public REST API does not expose the user's watch list.
+
+    A previous version of the MCP shipped four tools (`list_watched`,
+    `watch_offer`, `unwatch_offer`) plus an `/internal/poll-watched`
+    endpoint that all hit `/watchlist`, which 404s. The tools and
+    endpoint were removed; this test fails loudly if anyone resurrects
+    a code path that calls `/watchlist` again so we re-evaluate.
+    """
+    from pathlib import Path
+
+    for path in Path("src/allegro_mcp").rglob("*.py"):
+        text = path.read_text()
+        assert "/watchlist" not in text, (
+            f"{path} references /watchlist; Allegro's API does not expose this."
+        )
+        assert "poll-watched" not in text, (
+            f"{path} references /internal/poll-watched; use /internal/snapshot-offers."
+        )
+
+
 # ----------------------------------------------------------------------
 # Module loader
 # ----------------------------------------------------------------------

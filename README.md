@@ -19,7 +19,7 @@ checkout.
   calculation.
 - Intelligence: suspicion flags, composite seller-trust scores, and local
   price history.
-- Buyer actions: watch list, purchase history, seller messaging, auction
+- Buyer actions: purchase history, seller messaging, auction
   bidding (guarded by explicit confirmation), ratings, disputes, pickup
   points.
 - Persistent SQLite stores for OAuth tokens and price history.
@@ -68,6 +68,7 @@ start is:
 | `ALLEGRO_CLIENT_SECRET` | yes | OAuth client secret |
 | `ALLEGRO_USER_AGENT` | yes | Required by Allegro's REST terms |
 | `ALLEGRO_ENVIRONMENT` | no | `production` or `sandbox`; default `production` |
+| `ALLEGRO_MCP_BEARER` | no | If set, every MCP request must carry `Authorization: Bearer <value>`. Strongly recommended whenever the server is bound to anything other than `127.0.0.1`. |
 
 Token and history paths default to `~/.allegro-mcp/tokens.db` and
 `~/.allegro-mcp/history.db`. The parent directory is created with mode

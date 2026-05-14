@@ -12,17 +12,18 @@ single-user, single-host deployment.
 |---|---|---|---|
 | `ALLEGRO_CLIENT_ID` | yes | — | From apps.developer.allegro.pl |
 | `ALLEGRO_CLIENT_SECRET` | yes | — | Same |
-| `ALLEGRO_USER_AGENT` | yes | — | E.g. `allegro-mcp/0.1 (you@example.com)`. Allegro's REST API terms (art. 3.4(c)) require an honest, attributable user agent. |
+| `ALLEGRO_USER_AGENT` | yes | — | E.g. `allegro-mcp/0.2 (you@example.com)`. Allegro's REST API terms (art. 3.4(c)) require an honest, attributable user agent. |
 | `ALLEGRO_ENVIRONMENT` | no | `production` | `production` or `sandbox` |
 | `ALLEGRO_TOKEN_DB_PATH` | no | `~/.allegro-mcp/tokens.db` | Created 0600 in a 0700 parent |
 | `ALLEGRO_HISTORY_DB_PATH` | no | `~/.allegro-mcp/history.db` | Price snapshots |
 | `ALLEGRO_MCP_PORT` | no | `8765` | Streamable-HTTP port |
 | `ALLEGRO_MCP_BIND` | no | `127.0.0.1` | Bind address; keep on loopback for personal deployments |
+| `ALLEGRO_MCP_BEARER` | no | — | If set, every MCP request must carry `Authorization: Bearer <value>`. `/internal/*` routes are exempt (they have their own `X-Internal-Secret` gate). |
 | `ALLEGRO_MCP_MODULES` | no | all buy-side | Comma-separated module list; the extension point |
 | `ALLEGRO_DEFAULT_POSTAL_CODE` | no | — | Used by `compute_total_cost` |
 | `ALLEGRO_RATE_LIMIT_RPS` | no | `60` | Client-side request budget |
 | `ALLEGRO_RATE_LIMIT_BURST` | no | `100` | Token bucket capacity |
-| `ALLEGRO_INTERNAL_SECRET` | no | — | If set, `/internal/poll-watched` is enabled and authenticated by this value |
+| `ALLEGRO_INTERNAL_SECRET` | no | — | If set, `/internal/snapshot-offers` is enabled and authenticated by this value |
 
 ## systemd
 
@@ -56,27 +57,32 @@ ProtectKernelModules=yes
 WantedBy=multi-user.target
 ```
 
-Then a `/etc/systemd/system/allegro-mcp-poll.timer` plus a matching
-`.service` unit can drive `/internal/poll-watched` on an interval:
+Then a `/etc/systemd/system/allegro-mcp-snapshot.timer` plus a matching
+`.service` unit can drive `/internal/snapshot-offers` on an interval.
+Maintain `/etc/allegro-mcp/offers.json` with the list of offer IDs you
+want tracked historically (the MCP cannot fetch this from Allegro —
+the public API does not expose the user's watch list):
 
 ```ini
-# allegro-mcp-poll.service
+# allegro-mcp-snapshot.service
 [Unit]
-Description=Poll watched offers for price snapshots
+Description=Snapshot price history for tracked offers
 After=allegro-mcp.service
 
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/curl -fsS -X POST \
     -H "X-Internal-Secret: ${ALLEGRO_INTERNAL_SECRET}" \
-    http://127.0.0.1:8765/internal/poll-watched
+    -H "Content-Type: application/json" \
+    --data-binary @/etc/allegro-mcp/offers.json \
+    http://127.0.0.1:8765/internal/snapshot-offers
 EnvironmentFile=/etc/allegro-mcp/env
 ```
 
 ```ini
-# allegro-mcp-poll.timer
+# allegro-mcp-snapshot.timer
 [Unit]
-Description=Periodic poll of watched offers
+Description=Periodic price snapshot of tracked offers
 
 [Timer]
 OnBootSec=10min
@@ -85,6 +91,12 @@ Persistent=true
 
 [Install]
 WantedBy=timers.target
+```
+
+`offers.json` looks like:
+
+```json
+{ "offer_ids": ["10000000001", "10000000002"] }
 ```
 
 ## Docker
@@ -125,10 +137,36 @@ docker run --rm -it \
     python -m scripts.bootstrap_auth
 ```
 
-## Reverse proxy
+## Authenticating the MCP transport
 
-Bind the MCP to loopback and front it with Caddy or nginx if you need
-TLS or basic auth.
+The MCP HTTP transport accepts every reachable caller by default. Three
+strategies are supported, in increasing order of operational cost:
+
+1. **Built-in bearer (recommended for most homelab setups).** Set
+   `ALLEGRO_MCP_BEARER` to a long random secret. Every MCP request
+   must then carry `Authorization: Bearer <secret>`. Constant-time
+   comparison; rotation requires a restart. The `/internal/*` routes
+   are exempt because they have their own `X-Internal-Secret` gate.
+
+   ```bash
+   ALLEGRO_MCP_BEARER=$(openssl rand -hex 32) \
+       op run --env-file=/etc/allegro-mcp/op.env -- \
+       python -m allegro_mcp
+   ```
+
+   The MCP logs a warning at startup if `ALLEGRO_MCP_BIND` is not
+   loopback and `ALLEGRO_MCP_BEARER` is unset, since that combination
+   exposes write tools (`place_bid`, `send_message`, `open_dispute`,
+   `submit_rating`) to the network.
+
+2. **Loopback only.** The default `ALLEGRO_MCP_BIND=127.0.0.1` is
+   sufficient for a single-user laptop or a host that runs both the
+   MCP and the agent locally. No external configuration needed.
+
+3. **Reverse proxy (Caddy, nginx, traefik).** Useful when you also
+   need TLS termination, request logging, or rate limiting at the
+   edge. The bearer header check below is redundant with strategy 1
+   but harmless when both are configured.
 
 Caddy:
 

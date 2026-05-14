@@ -55,7 +55,6 @@ def test_module_list_default_includes_all_buy_side(tmp_path: Path) -> None:
         "category",
         "seller",
         "purchases",
-        "watching",
         "messaging",
         "bidding",
         "ratings",

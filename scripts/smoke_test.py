@@ -26,7 +26,6 @@ _TOOL_DEFAULTS: list[tuple[str, dict[str, Any]]] = [
     ("search_archive", {"phrase": "iphone 15", "days_back": 30}),
     ("deep_search", {"phrase": "iphone 15", "budget_seconds": 6.0}),
     ("expand_search", {"phrase": "iphone 15", "prior_results_count": 0}),
-    ("list_watched", {}),
     ("list_messages", {}),
     ("list_purchases", {"period_days": 90}),
     ("list_bids", {}),

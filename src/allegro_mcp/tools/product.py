@@ -27,17 +27,25 @@ def register(mcp: FastMCP, context: ToolContext) -> None:
             Field(description="Exact EAN/UPC/GTIN to look up; takes priority over phrase"),
         ] = None,
         mode: Annotated[
-            Literal["MATCHING", "GTIN"],
-            Field(description="`MATCHING` for fuzzy, `GTIN` for exact barcode"),
-        ] = "MATCHING",
+            Literal["STANDARD", "GTIN", "MPN"],
+            Field(
+                description=(
+                    "Search mode. `STANDARD` is fuzzy phrase matching; `GTIN` "
+                    "treats the phrase as a barcode; `MPN` treats it as a "
+                    "manufacturer part number. If `ean` is supplied, `GTIN` "
+                    "is forced regardless of this value."
+                )
+            ),
+        ] = "STANDARD",
         category_id: Annotated[str | None, Field()] = None,
         language: Annotated[str, Field()] = "pl-PL",
     ) -> ProductSearchResult:
         """Look up products in Allegro's master catalogue.
 
-        Use this to resolve a barcode (`ean`) to a product, or to find the
-        catalogue entry that best matches a phrase. Do not use this if you
-        want active offers — call `search_offers` or
+        Use this to resolve a barcode (`ean`) to a product, find the
+        catalogue entry that best matches a phrase, or look up a product
+        by its manufacturer part number (`mode="MPN"`). Do not use this
+        if you want active offers — call `search_offers` or
         `list_offers_for_product` instead.
         """
         if not phrase and not ean:

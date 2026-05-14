@@ -16,7 +16,6 @@ from allegro_mcp.models.purchase import Purchase, PurchaseLineItem
 from allegro_mcp.models.ratings import Rating
 from allegro_mcp.models.search import SearchFilter, SearchResult
 from allegro_mcp.models.seller import Seller, SellerRatings
-from allegro_mcp.models.watching import WatchResult
 
 __all__ = [
     "Account",
@@ -51,5 +50,4 @@ __all__ = [
     "SellerRatings",
     "SuspicionFlag",
     "TrustSignal",
-    "WatchResult",
 ]

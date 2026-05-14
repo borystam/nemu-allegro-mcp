@@ -19,7 +19,6 @@ from allegro_mcp.tools import (
     purchases,
     ratings,
     seller,
-    watching,
 )
 
 
@@ -92,6 +91,58 @@ async def test_search_products_requires_input(tool_context) -> None:
 
 
 @pytest.mark.asyncio
+async def test_search_products_mode_literal_matches_allegro(tool_context) -> None:
+    """Regression: Allegro's /sale/products rejects any mode not in
+    {STANDARD, GTIN, MPN} with InvalidSearchModeParameterException. The
+    schema must advertise exactly those values, no more, no less."""
+    mcp = FastMCP(name="t")
+    product.register(mcp, tool_context)
+    tool = await mcp.get_tool("search_products")
+    enum_values = tool.parameters["properties"]["mode"]["enum"]
+    assert set(enum_values) == {"STANDARD", "GTIN", "MPN"}
+    assert tool.parameters["properties"]["mode"]["default"] == "STANDARD"
+
+
+@pytest.mark.asyncio
+async def test_search_products_forces_gtin_when_ean_present(
+    allegro_client, tool_context, httpx_mock
+) -> None:
+    """Whatever `mode` is passed, supplying `ean` forces GTIN."""
+    captured: list[str] = []
+
+    def respond(request) -> object:
+        captured.append(str(request.url))
+        import httpx
+
+        return httpx.Response(200, json={"products": []})
+
+    httpx_mock.add_callback(respond, url=re.compile(r".*sale/products.*"))
+    mcp = FastMCP(name="t")
+    product.register(mcp, tool_context)
+    tool = await mcp.get_tool("search_products")
+    await tool.fn(phrase=None, ean="5901234123457", mode="STANDARD")
+    assert "mode=GTIN" in captured[0]
+
+
+@pytest.mark.asyncio
+async def test_search_products_mpn_branch(allegro_client, tool_context, httpx_mock) -> None:
+    captured: list[str] = []
+
+    def respond(request) -> object:
+        captured.append(str(request.url))
+        import httpx
+
+        return httpx.Response(200, json={"products": []})
+
+    httpx_mock.add_callback(respond, url=re.compile(r".*sale/products.*"))
+    mcp = FastMCP(name="t")
+    product.register(mcp, tool_context)
+    tool = await mcp.get_tool("search_products")
+    await tool.fn(phrase="MQ8N3LL/A", mode="MPN")
+    assert "mode=MPN" in captured[0]
+
+
+@pytest.mark.asyncio
 async def test_seller_lookup(allegro_client, tool_context, httpx_mock) -> None:
     httpx_mock.add_response(
         url="https://api.allegro.pl.allegrosandbox.pl/users/U",
@@ -107,34 +158,6 @@ async def test_seller_lookup(allegro_client, tool_context, httpx_mock) -> None:
     assert s.login == "L"
     listings = await (await mcp.get_tool("list_seller_offers")).fn(seller_id="U")
     assert listings == []
-
-
-@pytest.mark.asyncio
-async def test_watching_lifecycle(allegro_client, tool_context, httpx_mock) -> None:
-    httpx_mock.add_response(
-        method="GET",
-        url="https://api.allegro.pl.allegrosandbox.pl/watchlist",
-        json={
-            "watchedOffers": [{"id": "1", "name": "n", "sellingMode": {"price": {"amount": "5"}}}]
-        },
-    )
-    httpx_mock.add_response(
-        method="POST",
-        url="https://api.allegro.pl.allegrosandbox.pl/watchlist",
-        json={"offer": {"id": "1"}},
-    )
-    httpx_mock.add_response(
-        method="DELETE",
-        url="https://api.allegro.pl.allegrosandbox.pl/watchlist/1",
-    )
-    mcp = FastMCP(name="t")
-    watching.register(mcp, tool_context)
-    listed = await (await mcp.get_tool("list_watched")).fn()
-    assert listed[0].offer_id == "1"
-    watched = await (await mcp.get_tool("watch_offer")).fn(offer_id="1")
-    assert watched.watched is True
-    unwatched = await (await mcp.get_tool("unwatch_offer")).fn(offer_id="1")
-    assert unwatched.watched is False
 
 
 @pytest.mark.asyncio
