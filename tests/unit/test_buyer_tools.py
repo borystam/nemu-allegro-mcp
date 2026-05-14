@@ -19,7 +19,6 @@ from allegro_mcp.tools import (
     purchases,
     ratings,
     seller,
-    watching,
 )
 
 
@@ -159,34 +158,6 @@ async def test_seller_lookup(allegro_client, tool_context, httpx_mock) -> None:
     assert s.login == "L"
     listings = await (await mcp.get_tool("list_seller_offers")).fn(seller_id="U")
     assert listings == []
-
-
-@pytest.mark.asyncio
-async def test_watching_lifecycle(allegro_client, tool_context, httpx_mock) -> None:
-    httpx_mock.add_response(
-        method="GET",
-        url="https://api.allegro.pl.allegrosandbox.pl/watchlist",
-        json={
-            "watchedOffers": [{"id": "1", "name": "n", "sellingMode": {"price": {"amount": "5"}}}]
-        },
-    )
-    httpx_mock.add_response(
-        method="POST",
-        url="https://api.allegro.pl.allegrosandbox.pl/watchlist",
-        json={"offer": {"id": "1"}},
-    )
-    httpx_mock.add_response(
-        method="DELETE",
-        url="https://api.allegro.pl.allegrosandbox.pl/watchlist/1",
-    )
-    mcp = FastMCP(name="t")
-    watching.register(mcp, tool_context)
-    listed = await (await mcp.get_tool("list_watched")).fn()
-    assert listed[0].offer_id == "1"
-    watched = await (await mcp.get_tool("watch_offer")).fn(offer_id="1")
-    assert watched.watched is True
-    unwatched = await (await mcp.get_tool("unwatch_offer")).fn(offer_id="1")
-    assert unwatched.watched is False
 
 
 @pytest.mark.asyncio

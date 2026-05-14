@@ -1,4 +1,4 @@
-"""Internal poll-watched endpoint snapshot writer."""
+"""Internal snapshot-offers endpoint."""
 
 from __future__ import annotations
 
@@ -7,19 +7,14 @@ import re
 import pytest
 from fastmcp import FastMCP
 
-from allegro_mcp.server import _snapshot_watched
+from allegro_mcp.server import _snapshot_offers
 from allegro_mcp.tools import ToolContext
 
 
 @pytest.mark.asyncio
-async def test_snapshot_watched_records_for_each_offer(
+async def test_snapshot_offers_records_for_each_offer(
     allegro_client, tool_context: ToolContext, httpx_mock
 ) -> None:
-    httpx_mock.add_response(
-        method="GET",
-        url="https://api.allegro.pl.allegrosandbox.pl/watchlist",
-        json={"watchedOffers": [{"id": "A", "name": "A"}, {"id": "B", "name": "B"}]},
-    )
     httpx_mock.add_response(
         method="GET",
         url="https://api.allegro.pl.allegrosandbox.pl/sale/product-offers/A",
@@ -40,39 +35,46 @@ async def test_snapshot_watched_records_for_each_offer(
             "product": {"id": "PB"},
         },
     )
-    recorded = await _snapshot_watched(tool_context)
+    recorded = await _snapshot_offers(tool_context, ["A", "B"])
     assert recorded == 2
 
 
 @pytest.mark.asyncio
-async def test_snapshot_watched_skips_broken_offers(
+async def test_snapshot_offers_skips_broken_offers(
     allegro_client, tool_context: ToolContext, httpx_mock
 ) -> None:
-    httpx_mock.add_response(
-        method="GET",
-        url="https://api.allegro.pl.allegrosandbox.pl/watchlist",
-        json={"watchedOffers": [{"id": "A"}, {}]},
-    )
     httpx_mock.add_response(
         method="GET",
         url=re.compile(r".*sale/product-offers/A"),
         status_code=500,
         is_reusable=True,
     )
-    recorded = await _snapshot_watched(tool_context)
+    recorded = await _snapshot_offers(tool_context, ["A"])
     assert recorded == 0
 
 
 @pytest.mark.asyncio
-async def test_server_route_authorises_with_internal_secret(
+async def test_internal_snapshot_route_is_attached(
     allegro_client, tool_context: ToolContext
 ) -> None:
-    """Smoke-test that the custom route registration runs without error."""
+    """The /internal/snapshot-offers route should be registered."""
     mcp = FastMCP(name="t")
     from allegro_mcp.server import _attach_internal_routes
 
     _attach_internal_routes(mcp, tool_context)
-    # If registration succeeds, the http app exists with our route.
     app = mcp.http_app()
     paths = [route.path for route in app.routes]
-    assert "/internal/poll-watched" in paths
+    assert "/internal/snapshot-offers" in paths
+    # Regression: ensure the dead /internal/poll-watched route is not re-added.
+    assert "/internal/poll-watched" not in paths
+
+
+def test_coerce_offer_ids_normalises_input() -> None:
+    from allegro_mcp.server import _coerce_offer_ids
+
+    assert _coerce_offer_ids({"offer_ids": ["1", "  2 ", 3]}) == ["1", "2", "3"]
+    assert _coerce_offer_ids({"offer_ids": []}) == []
+    assert _coerce_offer_ids({"offer_ids": ["", "  "]}) == []
+    assert _coerce_offer_ids({"offer_ids": "1"}) is None
+    assert _coerce_offer_ids("not a dict") is None
+    assert _coerce_offer_ids(None) is None

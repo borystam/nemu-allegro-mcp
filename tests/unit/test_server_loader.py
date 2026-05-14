@@ -30,7 +30,6 @@ def _settings(tmp_path: Path, modules: str | None = None) -> Settings:
                 "category",
                 "seller",
                 "purchases",
-                "watching",
                 "messaging",
                 "bidding",
                 "ratings",
@@ -84,9 +83,6 @@ async def test_build_server_registers_every_buy_side_tool(tmp_path: Path) -> Non
         "detect_suspicious",
         "seller_trust_signal",
         "price_history",
-        "list_watched",
-        "watch_offer",
-        "unwatch_offer",
         "list_purchases",
         "get_purchase",
         "get_my_account",
@@ -114,4 +110,4 @@ async def test_build_server_honours_module_filter(tmp_path: Path) -> None:
     names = {t.name for t in tools}
     assert "search_offers" in names
     assert "get_offer" in names
-    assert "list_watched" not in names
+    assert "list_purchases" not in names

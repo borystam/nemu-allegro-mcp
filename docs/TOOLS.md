@@ -81,18 +81,17 @@ inspect the `notes` field.
 
 ### price_history(offer_id_or_product_id, days) → PriceHistory
 Locally-recorded price history from `~/.allegro-mcp/history.db`. Use
-this to identify dips and durable price drops. Coverage depends on the
-operator wiring `/internal/poll-watched` to a scheduler.
+this to identify dips and durable price drops. Coverage depends on
+the operator wiring `POST /internal/snapshot-offers` to a scheduler
+with the list of offer IDs they want tracked. Allegro does not expose
+the user's watch list via its public API, so the MCP cannot derive
+that list itself.
 
 ### find_lower_price(reference_offer_id, max_rating_drop?) → list[OfferSummary]
 Cheaper alternative sellers for the same product, subject to a
 seller-quality floor (default 5.0, i.e. no floor). Returns up to 20.
 
 ## Buyer actions
-
-### list_watched() / watch_offer(offer_id) / unwatch_offer(offer_id)
-Watch-list management. Watching is also the precondition for the local
-price-history scheduler to record snapshots.
 
 ### list_purchases(period_days, status?) → list[Purchase]
 Order history within a window. Use for finding orders to rate or open

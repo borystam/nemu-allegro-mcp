@@ -19,7 +19,7 @@ checkout.
   calculation.
 - Intelligence: suspicion flags, composite seller-trust scores, and local
   price history.
-- Buyer actions: watch list, purchase history, seller messaging, auction
+- Buyer actions: purchase history, seller messaging, auction
   bidding (guarded by explicit confirmation), ratings, disputes, pickup
   points.
 - Persistent SQLite stores for OAuth tokens and price history.

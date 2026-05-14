@@ -25,7 +25,6 @@ _DEFAULT_MODULES = (
     "category",
     "seller",
     "purchases",
-    "watching",
     "messaging",
     "bidding",
     "ratings",

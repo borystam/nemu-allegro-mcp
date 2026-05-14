@@ -47,9 +47,6 @@ Endpoint or shape is plausibly correct but not personally verified:
   with `deliveryAddress.postCode` query. The endpoint may be named
   `delivery-cost`, `delivery-quotes`, or similar — verify and adjust the
   parser if so.
-- `list_watched` / `watch_offer` / `unwatch_offer` — `/watchlist` with
-  `{"offer": {"id": ...}}` body. Worth confirming against the actual
-  Watch List API.
 - `list_purchases` / `get_purchase` — `/order/checkout-forms`. Shape is
   fairly complex; the parser handles the common fields but rarer fields
   (delivery tracking numbers, refunds) are left in raw parameters.
@@ -85,9 +82,10 @@ the actual response shapes:
 3. **Comparison and intel.** Take 2–3 offer IDs from step 1 and call
    `compare_offers`, `detect_suspicious`, `seller_trust_signal`. None of
    these need user-scoped permissions beyond the read scopes.
-4. **Watch list, then purchases.** These exercise the user-scoped scopes.
-   If `list_watched` returns successfully, snapshotting via
-   `/internal/poll-watched` should also work.
+4. **Purchases.** Exercises the `allegro:api:orders:read` scope.
+   `POST /internal/snapshot-offers` (with a hand-picked offer-id list)
+   verifies the price-history pipeline against the same scope used in
+   `get_offer`.
 5. **Messaging and ratings.** Read-only first (`list_messages`,
    `list_my_ratings`). Only attempt `send_message` and `submit_rating`
    against orders the user wants to interact with — these have visible

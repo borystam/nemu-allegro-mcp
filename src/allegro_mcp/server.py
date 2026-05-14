@@ -65,9 +65,9 @@ def build_server(settings: Settings | None = None) -> tuple[FastMCP, ToolContext
         name="allegro-mcp",
         instructions=(
             "Buy-side Allegro marketplace tools. Search and compare offers, "
-            "watch listings, retrieve purchase history, message sellers, place "
-            "auction bids (with explicit confirmation), submit ratings, manage "
-            "disputes, and hand off the final purchase to the user."
+            "retrieve purchase history, message sellers, place auction bids "
+            "(with explicit confirmation), submit ratings, manage disputes, "
+            "and hand off the final purchase to the user."
         ),
     )
     context = ToolContext(client=api_client, settings=settings, history=history)
@@ -84,8 +84,17 @@ def build_server(settings: Settings | None = None) -> tuple[FastMCP, ToolContext
 def _attach_internal_routes(mcp: FastMCP, context: ToolContext) -> None:
     """Register internal HTTP routes alongside the MCP transport."""
 
-    @mcp.custom_route("/internal/poll-watched", methods=["POST"])
-    async def poll_watched(request: Request) -> Response:
+    @mcp.custom_route("/internal/snapshot-offers", methods=["POST"])
+    async def snapshot_offers(request: Request) -> Response:
+        """Record a price snapshot for each offer ID supplied in the body.
+
+        The body must be JSON of the form ``{"offer_ids": ["123", "456"]}``.
+        The endpoint is authenticated by the ``X-Internal-Secret`` header
+        which must equal ``ALLEGRO_INTERNAL_SECRET``. Operators wire this to
+        cron or a systemd timer with the set of offer IDs they want to
+        track historically. There is no public Allegro endpoint for the
+        user's watch-list, so the MCP cannot derive the list itself.
+        """
         import hmac
 
         from starlette.responses import JSONResponse
@@ -99,22 +108,42 @@ def _attach_internal_routes(mcp: FastMCP, context: ToolContext) -> None:
         provided = request.headers.get("X-Internal-Secret", "")
         if not hmac.compare_digest(provided, expected.get_secret_value()):
             return JSONResponse({"error": "unauthorised"}, status_code=401)
-        recorded = await _snapshot_watched(context)
-        return JSONResponse({"recorded": recorded})
+        try:
+            body = await request.json()
+        except Exception:  # noqa: BLE001 — body could be empty or malformed
+            body = None
+        offer_ids = _coerce_offer_ids(body)
+        if offer_ids is None:
+            return JSONResponse(
+                {"error": "expected JSON body of shape {\"offer_ids\": [string, ...]}"},
+                status_code=400,
+            )
+        recorded = await _snapshot_offers(context, offer_ids)
+        return JSONResponse({"recorded": recorded, "requested": len(offer_ids)})
 
 
-async def _snapshot_watched(context: ToolContext) -> int:
-    """Read all watched offers and append a price snapshot for each."""
+def _coerce_offer_ids(body: object) -> list[str] | None:
+    if not isinstance(body, dict):
+        return None
+    raw = body.get("offer_ids")
+    if not isinstance(raw, list):
+        return None
+    out: list[str] = []
+    for entry in raw:
+        if isinstance(entry, str) and entry.strip():
+            out.append(entry.strip())
+        elif isinstance(entry, int):
+            out.append(str(entry))
+    return out
+
+
+async def _snapshot_offers(context: ToolContext, offer_ids: list[str]) -> int:
+    """Append a price snapshot for each offer ID in ``offer_ids``."""
     from datetime import datetime
 
-    payload = await context.client.get("/watchlist")
-    items = payload.get("watchedOffers") or payload.get("offers") or []
     snapshots: list[PriceSnapshot] = []
     captured_at = datetime.now(UTC)
-    for raw in items:
-        offer_id = str(raw.get("id") or raw.get("offerId") or "")
-        if not offer_id:
-            continue
+    for offer_id in offer_ids:
         try:
             detail = await context.client.get(f"/sale/product-offers/{offer_id}")
             offer = parse_offer(detail)

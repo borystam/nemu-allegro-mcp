@@ -89,14 +89,18 @@ Two SQLite databases live under `~/.allegro-mcp/`:
 - `history.db` — price snapshots, schema in
   `src/allegro_mcp/persistence/schema.sql`.
 
-There is no built-in scheduler in v1. The server exposes
-`POST /internal/poll-watched` (authenticated by
-`ALLEGRO_INTERNAL_SECRET`) which iterates the watched offers and writes a
-snapshot per offer. Operators wire this to cron, systemd timers, or an
-external orchestrator. The endpoint is intentionally narrow — it is the
-only side effect on the history database — and it is bound to the same
-internal address as the MCP transport, so exposing it externally requires
-explicit reverse-proxy configuration.
+There is no built-in scheduler. The server exposes
+`POST /internal/snapshot-offers` (authenticated by
+`ALLEGRO_INTERNAL_SECRET`) which records a price snapshot for every
+offer ID supplied in the request body. Operators wire this to cron,
+systemd timers, or an external orchestrator and decide which offers
+they want tracked. Allegro's public API does not expose the user's
+watch list, so the MCP cannot derive that list itself.
+
+The endpoint is intentionally narrow — it is the only side effect on
+the history database — and it is bound to the same internal address
+as the MCP transport, so exposing it externally requires explicit
+reverse-proxy configuration.
 
 ## Pydantic returns, not raw dicts
 

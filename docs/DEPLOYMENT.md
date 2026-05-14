@@ -22,7 +22,7 @@ single-user, single-host deployment.
 | `ALLEGRO_DEFAULT_POSTAL_CODE` | no | — | Used by `compute_total_cost` |
 | `ALLEGRO_RATE_LIMIT_RPS` | no | `60` | Client-side request budget |
 | `ALLEGRO_RATE_LIMIT_BURST` | no | `100` | Token bucket capacity |
-| `ALLEGRO_INTERNAL_SECRET` | no | — | If set, `/internal/poll-watched` is enabled and authenticated by this value |
+| `ALLEGRO_INTERNAL_SECRET` | no | — | If set, `/internal/snapshot-offers` is enabled and authenticated by this value |
 
 ## systemd
 
@@ -56,27 +56,32 @@ ProtectKernelModules=yes
 WantedBy=multi-user.target
 ```
 
-Then a `/etc/systemd/system/allegro-mcp-poll.timer` plus a matching
-`.service` unit can drive `/internal/poll-watched` on an interval:
+Then a `/etc/systemd/system/allegro-mcp-snapshot.timer` plus a matching
+`.service` unit can drive `/internal/snapshot-offers` on an interval.
+Maintain `/etc/allegro-mcp/offers.json` with the list of offer IDs you
+want tracked historically (the MCP cannot fetch this from Allegro —
+the public API does not expose the user's watch list):
 
 ```ini
-# allegro-mcp-poll.service
+# allegro-mcp-snapshot.service
 [Unit]
-Description=Poll watched offers for price snapshots
+Description=Snapshot price history for tracked offers
 After=allegro-mcp.service
 
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/curl -fsS -X POST \
     -H "X-Internal-Secret: ${ALLEGRO_INTERNAL_SECRET}" \
-    http://127.0.0.1:8765/internal/poll-watched
+    -H "Content-Type: application/json" \
+    --data-binary @/etc/allegro-mcp/offers.json \
+    http://127.0.0.1:8765/internal/snapshot-offers
 EnvironmentFile=/etc/allegro-mcp/env
 ```
 
 ```ini
-# allegro-mcp-poll.timer
+# allegro-mcp-snapshot.timer
 [Unit]
-Description=Periodic poll of watched offers
+Description=Periodic price snapshot of tracked offers
 
 [Timer]
 OnBootSec=10min
@@ -85,6 +90,12 @@ Persistent=true
 
 [Install]
 WantedBy=timers.target
+```
+
+`offers.json` looks like:
+
+```json
+{ "offer_ids": ["10000000001", "10000000002"] }
 ```
 
 ## Docker
