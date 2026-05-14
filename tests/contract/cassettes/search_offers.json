@@ -1,0 +1,38 @@
+{
+  "GET /offers/listing?limit=12&offset=0&phrase=test+phrase&sort=-relevance": {
+    "status": 200,
+    "headers": {"Content-Type": "application/vnd.allegro.public.v1+json"},
+    "json": {
+      "totalCount": 2,
+      "items": {
+        "regular": [
+          {
+            "id": "10000000001",
+            "name": "Sample product (scrubbed)",
+            "sellingMode": {"price": {"amount": "199.00", "currency": "PLN"}},
+            "seller": {"id": "1", "login": "scrubbed_seller", "kind": "BUSINESS"},
+            "stock": {"available": 3},
+            "delivery": {"free": true, "smart": false},
+            "product": {"id": "PR000001"},
+            "category": {"id": "1000"},
+            "images": [{"url": "https://example.invalid/img.jpg"}]
+          },
+          {
+            "id": "10000000002",
+            "name": "Sample product 2 (scrubbed)",
+            "sellingMode": {"price": {"amount": "249.50", "currency": "PLN"}},
+            "seller": {"id": "2", "login": "scrubbed_seller_2"},
+            "stock": {"available": 1},
+            "delivery": {"free": false, "smart": true},
+            "product": {"id": "PR000002"},
+            "category": {"id": "1000"}
+          }
+        ],
+        "promoted": []
+      },
+      "filters": [
+        {"id": "category", "name": "Kategoria", "values": [{"value": "1000", "name": "Elektronika"}]}
+      ]
+    }
+  }
+}

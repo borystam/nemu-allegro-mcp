@@ -1,0 +1,57 @@
+name: Integration
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sandbox:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.ALLEGRO_SANDBOX_CLIENT_ID != '' }}
+    env:
+      ALLEGRO_CLIENT_ID: ${{ secrets.ALLEGRO_SANDBOX_CLIENT_ID }}
+      ALLEGRO_CLIENT_SECRET: ${{ secrets.ALLEGRO_SANDBOX_CLIENT_SECRET }}
+      ALLEGRO_USER_AGENT: ${{ secrets.ALLEGRO_USER_AGENT }}
+      ALLEGRO_ENVIRONMENT: sandbox
+      ALLEGRO_TOKEN_DB_PATH: ${{ github.workspace }}/.state/tokens.db
+      ALLEGRO_HISTORY_DB_PATH: ${{ github.workspace }}/.state/history.db
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install project
+        run: uv sync --extra dev
+
+      - name: Decrypt sandbox token DB
+        if: ${{ secrets.ALLEGRO_SANDBOX_TOKENS_AGE != '' }}
+        run: |
+          mkdir -p $(dirname "$ALLEGRO_TOKEN_DB_PATH")
+          printf '%s' '${{ secrets.ALLEGRO_SANDBOX_TOKENS_AGE }}' > age.key
+          curl -fsSL https://github.com/FiloSottile/age/releases/download/v1.2.0/age-v1.2.0-linux-amd64.tar.gz \
+            | tar -xz -C /tmp
+          /tmp/age/age -d -i age.key -o "$ALLEGRO_TOKEN_DB_PATH" \
+            < <(printf '%s' '${{ secrets.ALLEGRO_SANDBOX_TOKENS_DB_B64 }}' | base64 -d)
+          rm age.key
+
+      - name: Lint, types, unit, contract
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run mypy --strict src/
+          uv run pytest tests/unit/ -v
+          uv run pytest tests/contract/ -v
+
+      - name: Integration tests
+        run: uv run pytest tests/integration/ -v -m integration

@@ -1,0 +1,13 @@
+{
+  "GET /me": {
+    "status": 200,
+    "headers": {"Content-Type": "application/vnd.allegro.public.v1+json"},
+    "json": {
+      "id": "ACCOUNT_ID",
+      "login": "scrubbed_user",
+      "email": "scrubbed@example.invalid",
+      "firstName": "Test",
+      "countryCode": "PL"
+    }
+  }
+}

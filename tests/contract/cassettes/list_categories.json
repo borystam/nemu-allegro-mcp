@@ -1,0 +1,14 @@
+{
+  "GET /sale/categories": {
+    "status": 200,
+    "headers": {"Content-Type": "application/vnd.allegro.public.v1+json"},
+    "json": {
+      "categories": [
+        {"id": "1", "name": "Antyki i Sztuka", "leaf": false},
+        {"id": "2", "name": "Dla Dzieci", "leaf": false},
+        {"id": "3", "name": "Elektronika", "leaf": false},
+        {"id": "9999", "name": "Inne", "leaf": true}
+      ]
+    }
+  }
+}

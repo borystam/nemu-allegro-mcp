@@ -1,0 +1,22 @@
+{
+  "GET /sale/product-offers/10000000001": {
+    "status": 200,
+    "headers": {"Content-Type": "application/vnd.allegro.public.v1+json"},
+    "json": {
+      "id": "10000000001",
+      "name": "Sample product (scrubbed)",
+      "sellingMode": {"price": {"amount": "199.00", "currency": "PLN"}},
+      "seller": {"id": "1", "login": "scrubbed_seller", "kind": "BUSINESS", "company": {"name": "Co"}},
+      "category": {"id": "1000"},
+      "product": {"id": "PR000001"},
+      "stock": {"available": 3, "unit": "UNIT"},
+      "parameters": [
+        {"id": "condition", "name": "Stan", "values": ["new"]},
+        {"id": "brand", "name": "Marka", "values": ["Acme"]}
+      ],
+      "images": [{"url": "https://example.invalid/img.jpg"}],
+      "delivery": {"free": true, "handlingTime": "PT24H", "options": []},
+      "categoryPath": [{"name": "Elektronika"}, {"name": "Telefony"}]
+    }
+  }
+}
