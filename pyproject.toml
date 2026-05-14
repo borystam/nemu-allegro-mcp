@@ -1,6 +1,6 @@
 [project]
 name = "allegro-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Buy-side Allegro marketplace MCP server for LLM agents"
 readme = "README.md"
 license = { text = "PolyForm-Noncommercial-1.0.0" }

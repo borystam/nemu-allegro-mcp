@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import hmac
+import json
 import logging
 from datetime import UTC
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
 from fastmcp import FastMCP
+from pydantic import SecretStr
+from starlette.middleware import Middleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from allegro_mcp.auth.refresh import TokenManager
 from allegro_mcp.auth.token_store import TokenStore
@@ -22,6 +27,83 @@ if TYPE_CHECKING:
     from starlette.responses import Response
 
 logger = logging.getLogger(__name__)
+
+
+class BearerAuthMiddleware:
+    """ASGI middleware that gates the MCP transport behind a static bearer.
+
+    Requests are accepted if (and only if) one of the following is true:
+
+    - the path starts with ``/internal/`` (those routes have their own
+      ``X-Internal-Secret`` gate and shouldn't double-auth), or
+    - the ``Authorization`` request header equals ``Bearer <expected>``
+      where ``expected`` matches the configured token under a
+      constant-time comparison.
+
+    All other requests are answered with a 401 JSON body. The expected
+    token is read once at construction time; rotating it requires a
+    restart.
+    """
+
+    def __init__(self, app: ASGIApp, *, expected_token: str) -> None:
+        if not expected_token:
+            raise ValueError("expected_token must be a non-empty string")
+        self._app = app
+        self._expected = expected_token
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope.get("type") != "http":
+            await self._app(scope, receive, send)
+            return
+        path = str(scope.get("path", ""))
+        if path.startswith("/internal/"):
+            await self._app(scope, receive, send)
+            return
+        if not self._header_ok(scope):
+            await _send_json_response(
+                send,
+                status_code=401,
+                payload={"error": "unauthorised"},
+            )
+            return
+        await self._app(scope, receive, send)
+
+    def _header_ok(self, scope: Scope) -> bool:
+        for raw_name, raw_value in scope.get("headers") or []:
+            if raw_name.lower() != b"authorization":
+                continue
+            try:
+                value = raw_value.decode("latin-1")
+            except UnicodeDecodeError:
+                return False
+            prefix = "Bearer "
+            if not value.startswith(prefix):
+                return False
+            provided = value[len(prefix) :].strip()
+            return hmac.compare_digest(provided, self._expected)
+        return False
+
+
+async def _send_json_response(send: Send, *, status_code: int, payload: dict[str, Any]) -> None:
+    body = json.dumps(payload).encode("utf-8")
+    await send(
+        {
+            "type": "http.response.start",
+            "status": status_code,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(body)).encode("ascii")),
+            ],
+        }
+    )
+    await send({"type": "http.response.body", "body": body})
+
+
+def _bearer_middleware(token: SecretStr | None) -> list[Middleware]:
+    """Return the bearer-auth middleware list, or an empty list if disabled."""
+    if token is None:
+        return []
+    return [Middleware(BearerAuthMiddleware, expected_token=token.get_secret_value())]
 
 
 def build_server(settings: Settings | None = None) -> tuple[FastMCP, ToolContext]:
@@ -115,7 +197,7 @@ def _attach_internal_routes(mcp: FastMCP, context: ToolContext) -> None:
         offer_ids = _coerce_offer_ids(body)
         if offer_ids is None:
             return JSONResponse(
-                {"error": "expected JSON body of shape {\"offer_ids\": [string, ...]}"},
+                {"error": 'expected JSON body of shape {"offer_ids": [string, ...]}'},
                 status_code=400,
             )
         recorded = await _snapshot_offers(context, offer_ids)
@@ -164,6 +246,14 @@ async def _snapshot_offers(context: ToolContext, offer_ids: list[str]) -> int:
     return await context.history.record_many(snapshots)
 
 
+def _exposed_without_auth(settings: Settings) -> bool:
+    """True if the bind address is non-loopback but no bearer is configured."""
+    if settings.mcp_bearer is not None:
+        return False
+    bind = (settings.mcp_bind or "").strip()
+    return bind not in {"127.0.0.1", "::1", "localhost"}
+
+
 def run() -> None:
     """Run the MCP server over streamable HTTP."""
     settings = load_settings()
@@ -171,9 +261,17 @@ def run() -> None:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    if _exposed_without_auth(settings):
+        logger.warning(
+            "ALLEGRO_MCP_BEARER is unset but ALLEGRO_MCP_BIND=%s is not loopback; "
+            "every reachable caller can invoke write tools. Set "
+            "ALLEGRO_MCP_BEARER or front the server with a reverse proxy.",
+            settings.mcp_bind,
+        )
     mcp, _context = build_server(settings)
     mcp.run(
         transport="http",
         host=settings.mcp_bind,
         port=settings.mcp_port,
+        middleware=_bearer_middleware(settings.mcp_bearer),
     )
