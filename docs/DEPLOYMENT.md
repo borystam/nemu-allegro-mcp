@@ -156,8 +156,8 @@ strategies are supported, in increasing order of operational cost:
 
    The MCP logs a warning at startup if `ALLEGRO_MCP_BIND` is not
    loopback and `ALLEGRO_MCP_BEARER` is unset, since that combination
-   exposes write tools (`place_bid`, `send_message`, `open_dispute`,
-   `submit_rating`) to the network.
+   exposes write tools (`place_bid`, `send_message`, `submit_rating`)
+   to the network.
 
 2. **Loopback only.** The default `ALLEGRO_MCP_BIND=127.0.0.1` is
    sufficient for a single-user laptop or a host that runs both the

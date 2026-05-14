@@ -94,12 +94,16 @@ async def test_build_server_registers_every_buy_side_tool(tmp_path: Path) -> Non
         "list_my_ratings",
         "list_disputes",
         "get_dispute",
-        "open_dispute",
         "prepare_purchase",
-        "find_pickup_points",
     }
     missing = expected - names
     assert not missing, f"missing tools: {sorted(missing)}"
+    # Tools that were removed because Allegro has no public REST endpoint
+    # for them. If any of these comes back the regression test in
+    # test_edge_cases.py will also flag the source paths.
+    removed = {"open_dispute", "find_pickup_points"}
+    leaked = removed & names
+    assert not leaked, f"removed tools were re-registered: {sorted(leaked)}"
 
 
 @pytest.mark.asyncio

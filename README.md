@@ -20,8 +20,7 @@ checkout.
 - Intelligence: suspicion flags, composite seller-trust scores, and local
   price history.
 - Buyer actions: purchase history, seller messaging, auction
-  bidding (guarded by explicit confirmation), ratings, disputes, pickup
-  points.
+  bidding (guarded by explicit confirmation), ratings, disputes.
 - Persistent SQLite stores for OAuth tokens and price history.
 - Streamable-HTTP transport, async throughout, rate limiting and retry
   against Allegro's leaky-bucket limits.

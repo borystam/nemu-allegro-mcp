@@ -31,7 +31,6 @@ _TOOL_DEFAULTS: list[tuple[str, dict[str, Any]]] = [
     ("list_bids", {}),
     ("list_my_ratings", {"limit": 5}),
     ("list_disputes", {}),
-    ("find_pickup_points", {"postal_code": "00-001", "radius_km": 3}),
 ]
 
 

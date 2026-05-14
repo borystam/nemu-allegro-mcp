@@ -15,7 +15,6 @@ from allegro_mcp.tools import (
     messaging,
     offer,
     product,
-    purchase_handoff,
     purchases,
     ratings,
     seller,
@@ -281,9 +280,9 @@ async def test_ratings(allegro_client, tool_context, httpx_mock) -> None:
 async def test_disputes(allegro_client, tool_context, httpx_mock) -> None:
     httpx_mock.add_response(
         method="GET",
-        url="https://api.allegro.pl.allegrosandbox.pl/sale/disputes",
+        url="https://api.allegro.pl.allegrosandbox.pl/post-purchase-issues",
         json={
-            "disputes": [
+            "postPurchaseIssues": [
                 {
                     "id": "D",
                     "order": {"id": "O"},
@@ -296,7 +295,7 @@ async def test_disputes(allegro_client, tool_context, httpx_mock) -> None:
     )
     httpx_mock.add_response(
         method="GET",
-        url="https://api.allegro.pl.allegrosandbox.pl/sale/disputes/D",
+        url="https://api.allegro.pl.allegrosandbox.pl/post-purchase-issues/D",
         json={
             "id": "D",
             "order": {"id": "O"},
@@ -307,7 +306,7 @@ async def test_disputes(allegro_client, tool_context, httpx_mock) -> None:
     )
     httpx_mock.add_response(
         method="GET",
-        url="https://api.allegro.pl.allegrosandbox.pl/sale/disputes/D/messages",
+        url="https://api.allegro.pl.allegrosandbox.pl/post-purchase-issues/D/messages",
         json={
             "messages": [
                 {
@@ -319,53 +318,17 @@ async def test_disputes(allegro_client, tool_context, httpx_mock) -> None:
             ]
         },
     )
-    httpx_mock.add_response(
-        method="POST",
-        url="https://api.allegro.pl.allegrosandbox.pl/sale/disputes",
-        json={
-            "id": "D2",
-            "order": {"id": "O"},
-            "status": "OPEN",
-            "subject": {"id": "NOT_RECEIVED"},
-            "createdAt": "2024-01-01T00:00:00Z",
-        },
-    )
     mcp = FastMCP(name="t")
     disputes.register(mcp, tool_context)
     listed = await (await mcp.get_tool("list_disputes")).fn()
     assert listed[0].dispute_id == "D"
     detail = await (await mcp.get_tool("get_dispute")).fn(dispute_id="D")
     assert detail.messages[0].body == "hi"
-    opened = await (await mcp.get_tool("open_dispute")).fn(
-        order_id="O",
-        reason="NOT_RECEIVED",
-        description="Item never arrived after the promised window expired.",
-    )
-    assert opened.dispute_id == "D2"
-
-
-@pytest.mark.asyncio
-async def test_pickup_points(allegro_client, tool_context, httpx_mock) -> None:
-    httpx_mock.add_response(
-        method="GET",
-        url=re.compile(r".*order/pickup-points.*"),
-        json={
-            "pickupPoints": [
-                {
-                    "id": "PP1",
-                    "provider": "INPOST",
-                    "name": "Locker A",
-                    "address": {"street": "Main 1", "zipCode": "00-001", "city": "Warszawa"},
-                    "location": {"latitude": 52.2, "longitude": 21.0},
-                    "distance": 0.5,
-                }
-            ]
-        },
-    )
-    mcp = FastMCP(name="t")
-    purchase_handoff.register(mcp, tool_context)
-    points = await (await mcp.get_tool("find_pickup_points")).fn(postal_code="00-001", radius_km=3)
-    assert points[0].point_id == "PP1"
+    # `open_dispute` was removed: Allegro's /post-purchase-issues family does
+    # not expose a public POST to create a new issue (buyers initiate from
+    # the web UI; the API only reads + responds).
+    tools = await mcp.list_tools()
+    assert "open_dispute" not in {t.name for t in tools}
 
 
 @pytest.mark.asyncio

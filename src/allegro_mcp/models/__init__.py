@@ -10,7 +10,6 @@ from allegro_mcp.models.handoff import PurchaseHandoff
 from allegro_mcp.models.intel import LandedCost, PriceHistory, SuspicionFlag, TrustSignal
 from allegro_mcp.models.messaging import Message, MessageThread
 from allegro_mcp.models.offer import Money, Offer, OfferSummary
-from allegro_mcp.models.pickup import PickupPoint
 from allegro_mcp.models.product import Product, ProductSearchResult
 from allegro_mcp.models.purchase import Purchase, PurchaseLineItem
 from allegro_mcp.models.ratings import Rating
@@ -35,7 +34,6 @@ __all__ = [
     "Money",
     "Offer",
     "OfferSummary",
-    "PickupPoint",
     "PriceHistory",
     "Product",
     "ProductSearchResult",

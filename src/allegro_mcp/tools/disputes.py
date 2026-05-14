@@ -1,4 +1,11 @@
-"""Disputes opened against orders."""
+"""Post-purchase issues (Allegro's buyer-side dispute model).
+
+Allegro replaced the legacy sale-side dispute endpoints with
+`/post-purchase-issues`. The new model exposes read + message-respond
+paths but does not expose a public endpoint to OPEN a new dispute —
+buyers initiate from the web UI; the API can only see and respond to
+issues that already exist.
+"""
 
 from __future__ import annotations
 
@@ -20,63 +27,42 @@ def register(mcp: FastMCP, context: ToolContext) -> None:
 
     @mcp.tool
     async def list_disputes() -> list[Dispute]:
-        """List disputes the authenticated buyer has open or has closed.
+        """List post-purchase issues the authenticated buyer has open or closed.
 
         Use this to surface ongoing buyer-protection cases and their
-        statuses. Do not use this to read seller-side disputes; this
-        endpoint scope is buyer-only.
+        statuses. The endpoint is buyer-scoped — seller-side cases are
+        not returned here.
         """
-        payload = await context.client.get("/sale/disputes")
-        return [_dispute_from(raw) for raw in payload.get("disputes") or []]
+        payload = await context.client.get("/post-purchase-issues")
+        raw_issues = (
+            payload.get("postPurchaseIssues")
+            or payload.get("issues")
+            or payload.get("disputes")
+            or []
+        )
+        return [_dispute_from(raw) for raw in raw_issues]
 
     @mcp.tool
     async def get_dispute(
-        dispute_id: Annotated[str, Field(description="Dispute identifier from `list_disputes`")],
+        dispute_id: Annotated[str, Field(description="Issue identifier from `list_disputes`")],
     ) -> Dispute:
-        """Fetch the full message history for a dispute.
+        """Fetch the full message history for a post-purchase issue.
 
         Use this when you need the back-and-forth between buyer and seller
         before drafting a follow-up message or escalating to Allegro.
         """
-        payload = await context.client.get(f"/sale/disputes/{dispute_id}")
+        payload = await context.client.get(f"/post-purchase-issues/{dispute_id}")
         dispute = _dispute_from(payload)
-        messages_payload = await context.client.get(f"/sale/disputes/{dispute_id}/messages")
+        messages_payload = await context.client.get(
+            f"/post-purchase-issues/{dispute_id}/messages"
+        )
         dispute.messages = [_message_from(raw) for raw in messages_payload.get("messages") or []]
         return dispute
-
-    @mcp.tool
-    async def open_dispute(
-        order_id: Annotated[str, Field(description="Order against which to open a dispute")],
-        reason: Annotated[
-            str,
-            Field(
-                description="Allegro reason code (e.g. `NOT_RECEIVED`, `INCONSISTENT_WITH_DESCRIPTION`)"
-            ),
-        ],
-        description: Annotated[
-            str, Field(min_length=20, max_length=4000, description="Buyer's account of the problem")
-        ],
-    ) -> Dispute:
-        """Open a dispute against an order.
-
-        Use this only when the user has decided to escalate; lighter
-        contact (`send_message`) is preferable for first contact. Disputes
-        are visible to Allegro and trigger buyer-protection workflows.
-        """
-        payload = await context.client.post(
-            "/sale/disputes",
-            json={
-                "order": {"id": order_id},
-                "subject": {"id": reason},
-                "message": {"text": description},
-            },
-        )
-        return _dispute_from(payload)
 
 
 def _dispute_from(raw: dict[str, Any]) -> Dispute:
     order = raw.get("order") or raw.get("checkoutForm") or {}
-    subject = raw.get("subject") or {}
+    subject = raw.get("subject") or raw.get("claimType") or {}
     return Dispute(
         dispute_id=str(raw.get("id") or ""),
         order_id=str(order.get("id") or ""),
